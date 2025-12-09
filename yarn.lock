@@ -3463,6 +3463,7 @@ __metadata:
     hardhat-deploy: ^1.0.4
     hardhat-deploy-ethers: ~0.4.2
     hardhat-gas-reporter: ~2.2.1
+    https-proxy-agent: ^7.0.6
     prettier: ^3.5.3
     prettier-plugin-solidity: ~1.4.1
     qrcode: ~1.5.4
@@ -10214,7 +10215,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"https-proxy-agent@npm:^7.0.1":
+"https-proxy-agent@npm:^7.0.1, https-proxy-agent@npm:^7.0.6":
   version: 7.0.6
   resolution: "https-proxy-agent@npm:7.0.6"
   dependencies:

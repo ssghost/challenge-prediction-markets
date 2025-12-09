@@ -1,19 +1,5 @@
-import { ProxyAgent, setGlobalDispatcher } from "undici";
-
-const PROXY_URL = "http://127.0.0.1:9910";
-
-try {
-  const proxyAgent = new ProxyAgent(PROXY_URL);
-  setGlobalDispatcher(proxyAgent);
-  console.log("✅ Hardhat is routing all network traffic through proxy: " + PROXY_URL);
-} catch (error) {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  console.error("❌ Failed to set up proxy dispatcher: " + errorMessage);
-}
-
 import * as dotenv from "dotenv";
-dotenv.config();
-
+import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@typechain/hardhat";
@@ -22,15 +8,48 @@ import "solidity-coverage";
 import "@nomicfoundation/hardhat-verify";
 import "hardhat-deploy";
 import "hardhat-deploy-ethers";
-import { task } from "hardhat/config";
 import generateTsAbis from "./scripts/generateTsAbis";
 
-const providerApiKey = process.env.ALCHEMY_API_KEY || "oKxs-03sij-U_N0iOlrSsZFr29-IqbuF";
-const deployerPrivateKey =
-  process.env.__RUNTIME_DEPLOYER_PRIVATE_KEY ?? "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+// 引入代理相關庫 (全部使用 import)
+import { ProxyAgent, setGlobalDispatcher } from "undici";
+import { HttpsProxyAgent } from "https-proxy-agent";
+import http from "http";
+import https from "https";
 
+// ========================================================
+// 1. 初始化與代理配置 (Runtime Logic)
+// ========================================================
+dotenv.config();
+
+const PROXY_URL = "http://127.0.0.1:9910";
+
+// [A] 配置 Undici 代理 (修復 Hardhat 部署與核心請求)
+try {
+  const undiciAgent = new ProxyAgent(PROXY_URL);
+  setGlobalDispatcher(undiciAgent);
+  console.log("✅ [Undici] Proxy setup success.");
+} catch {
+  console.log("⚠️ Undici proxy setup skipped.");
+}
+
+// [B] 配置 Node全局代理 (修復 Axios/Verify 驗證請求)
+// 使用 HttpsProxyAgent 替代 global-agent，並通過 import 導入 http/https
+const nodeProxyAgent = new HttpsProxyAgent(PROXY_URL);
+http.globalAgent = nodeProxyAgent;
+https.globalAgent = nodeProxyAgent;
+console.log("✅ [System] Global HTTP/HTTPS agent patched.");
+
+// ========================================================
+// 2. 變數讀取
+// ========================================================
+const providerApiKey = process.env.ALCHEMY_API_KEY || "oKxs-03sij-U_N0iOlrSsZFr29-IqbuF";
+const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY ?? "";
 const etherscanApiKey = process.env.ETHERSCAN_API_KEY || "";
-const config = {
+
+// ========================================================
+// 3. Hardhat 主配置
+// ========================================================
+const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
@@ -60,75 +79,23 @@ const config = {
     },
     mainnet: {
       url: "https://eth-mainnet.alchemyapi.io/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
+      accounts: deployerPrivateKey ? [deployerPrivateKey] : [],
     },
     sepolia: {
       url: "https://eth-sepolia.g.alchemy.com/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
-    },
-    arbitrum: {
-      url: "https://arb-mainnet.g.alchemy.com/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
+      accounts: deployerPrivateKey ? [deployerPrivateKey] : [],
     },
     arbitrumSepolia: {
       url: "https://arb-sepolia.g.alchemy.com/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
-    },
-    optimism: {
-      url: "https://opt-mainnet.g.alchemy.com/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
+      accounts: deployerPrivateKey ? [deployerPrivateKey] : [],
     },
     optimismSepolia: {
       url: "https://opt-sepolia.g.alchemy.com/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
-    },
-    polygon: {
-      url: "https://polygon-mainnet.g.alchemy.com/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
-    },
-    polygonAmoy: {
-      url: "https://polygon-amoy.g.alchemy.com/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
-    },
-    polygonZkEvm: {
-      url: "https://polygonzkevm-mainnet.g.alchemy.com/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
-    },
-    polygonZkEvmCardona: {
-      url: "https://polygonzkevm-cardona.g.alchemy.com/v2/" + providerApiKey,
-      accounts: [deployerPrivateKey],
-    },
-    gnosis: {
-      url: "https://rpc.gnosischain.com",
-      accounts: [deployerPrivateKey],
-    },
-    chiado: {
-      url: "https://rpc.chiadochain.net",
-      accounts: [deployerPrivateKey],
-    },
-    base: {
-      url: "https://mainnet.base.org",
-      accounts: [deployerPrivateKey],
+      accounts: deployerPrivateKey ? [deployerPrivateKey] : [],
     },
     baseSepolia: {
       url: "https://sepolia.base.org",
-      accounts: [deployerPrivateKey],
-    },
-    scrollSepolia: {
-      url: "https://sepolia-rpc.scroll.io",
-      accounts: [deployerPrivateKey],
-    },
-    scroll: {
-      url: "https://rpc.scroll.io",
-      accounts: [deployerPrivateKey],
-    },
-    celo: {
-      url: "https://forno.celo.org",
-      accounts: [deployerPrivateKey],
-    },
-    celoAlfajores: {
-      url: "https://alfajores-forno.celo-testnet.org",
-      accounts: [deployerPrivateKey],
+      accounts: deployerPrivateKey ? [deployerPrivateKey] : [],
     },
   },
   etherscan: {
