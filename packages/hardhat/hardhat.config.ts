@@ -10,34 +10,35 @@ import "hardhat-deploy";
 import "hardhat-deploy-ethers";
 import generateTsAbis from "./scripts/generateTsAbis";
 
-// 引入代理相關庫 (全部使用 import)
+// 引入代理庫 (確保已安裝 undici 和 https-proxy-agent)
 import { ProxyAgent, setGlobalDispatcher } from "undici";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import http from "http";
 import https from "https";
 
 // ========================================================
-// 1. 初始化與代理配置 (Runtime Logic)
+// 1. 初始化與網絡代理配置
 // ========================================================
 dotenv.config();
 
+// 定義您的代理地址
 const PROXY_URL = "http://127.0.0.1:9910";
 
 // [A] 配置 Undici 代理 (修復 Hardhat 部署與核心請求)
 try {
   const undiciAgent = new ProxyAgent(PROXY_URL);
   setGlobalDispatcher(undiciAgent);
-  console.log("✅ [Undici] Proxy setup success.");
 } catch {
-  console.log("⚠️ Undici proxy setup skipped.");
+  // 忽略重複設置的錯誤
 }
 
-// [B] 配置 Node全局代理 (修復 Axios/Verify 驗證請求)
-// 使用 HttpsProxyAgent 替代 global-agent，並通過 import 導入 http/https
+// [B] 配置 Node 全局代理 (修復 驗證插件/Axios)
+// 強制將 Node.js 底層的 HTTP/HTTPS 發送器指向代理隧道
 const nodeProxyAgent = new HttpsProxyAgent(PROXY_URL);
 http.globalAgent = nodeProxyAgent;
 https.globalAgent = nodeProxyAgent;
-console.log("✅ [System] Global HTTP/HTTPS agent patched.");
+
+console.log(`✅ [Network] Proxy initialized at: ${PROXY_URL}`);
 
 // ========================================================
 // 2. 變數讀取
